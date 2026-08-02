@@ -2,8 +2,8 @@ package com.ruikao.server.controller.student;
 
 import com.ruikao.common.context.BaseContext;
 import com.ruikao.common.result.Result;
-import com.ruikao.pojo.vo.RecordVO;
 import com.ruikao.pojo.vo.StudentExamVO;
+import com.ruikao.pojo.vo.StudentRecordVO;
 import com.ruikao.server.service.ExamRecordService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,9 +28,10 @@ public class RecordController {
     }
 
     @GetMapping("/{id}")
-    public Result<RecordVO> getById(@PathVariable Long id) {
-        log.info("查询考试记录详情: recordId={}", id);
-        RecordVO recordVO = examRecordService.getDetail(id);
+    public Result<StudentRecordVO> getById(@PathVariable Long id) {
+        Long studentId = BaseContext.getCurrentId();
+        log.info("查询考试记录详情: recordId={}, studentId={}", id, studentId);
+        StudentRecordVO recordVO = examRecordService.getStudentDetail(id, studentId);
         return Result.success(recordVO);
     }
 }

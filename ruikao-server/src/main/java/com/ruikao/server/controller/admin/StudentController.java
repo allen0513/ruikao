@@ -2,9 +2,12 @@ package com.ruikao.server.controller.admin;
 
 import com.ruikao.common.result.PageResult;
 import com.ruikao.common.result.Result;
+import com.ruikao.pojo.dto.StudentDTO;
 import com.ruikao.pojo.dto.StudentPageQueryDTO;
 import com.ruikao.pojo.entity.Student;
+import com.ruikao.server.annotation.OperLog;
 import com.ruikao.server.service.StudentService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -18,26 +21,29 @@ public class StudentController {
     private final StudentService studentService;
 
     @PostMapping("/page")
-    public Result<PageResult<Student>> page(@RequestBody StudentPageQueryDTO queryDTO) {
+    public Result<PageResult<Student>> page(@RequestBody @Valid StudentPageQueryDTO queryDTO) {
         log.info("学生分页查询: {}", queryDTO);
         PageResult<Student> pageResult = studentService.pageQuery(queryDTO);
         return Result.success(pageResult);
     }
 
+    @OperLog(module = "学生管理", type = "新增", description = "创建学生:{#studentDTO.name}")
     @PostMapping
-    public Result<String> create(@RequestBody Student student) {
-        log.info("创建学生: {}", student.getName());
-        studentService.add(student);
+    public Result<String> create(@RequestBody @Valid StudentDTO studentDTO) {
+        log.info("创建学生: {}", studentDTO.getName());
+        studentService.add(studentDTO);
         return Result.success();
     }
 
+    @OperLog(module = "学生管理", type = "修改", description = "更新学生:{#studentDTO.id}")
     @PutMapping
-    public Result<String> update(@RequestBody Student student) {
-        log.info("更新学生, id: {}", student.getId());
-        studentService.update(student);
+    public Result<String> update(@RequestBody @Valid StudentDTO studentDTO) {
+        log.info("更新学生, id: {}", studentDTO.getId());
+        studentService.update(studentDTO);
         return Result.success();
     }
 
+    @OperLog(module = "学生管理", type = "删除", description = "删除学生:{#id}")
     @DeleteMapping("/{id}")
     public Result<String> delete(@PathVariable Long id) {
         log.info("删除学生, id: {}", id);

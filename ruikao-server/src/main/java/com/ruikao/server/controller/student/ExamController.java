@@ -10,8 +10,8 @@ import com.ruikao.pojo.vo.SubmitResultVO;
 import com.ruikao.server.service.ExamPaperService;
 import com.ruikao.server.service.ExamRecordService;
 import com.ruikao.server.service.ExamService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,16 +19,14 @@ import java.util.List;
 @RestController("studentExamController")
 @RequestMapping("/api/student/exam")
 @Slf4j
+@RequiredArgsConstructor
 public class ExamController {
 
-    @Autowired
-    private ExamRecordService examRecordService;
+    private final ExamRecordService examRecordService;
 
-    @Autowired
-    private ExamService examService;
+    private final ExamService examService;
 
-    @Autowired
-    private ExamPaperService examPaperService;
+    private final ExamPaperService examPaperService;
 
     @GetMapping("/list")
     public Result<List<StudentExamVO>> list() {

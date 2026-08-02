@@ -1,0 +1,19 @@
+# 本地开发配置模板
+# 用法：复制本文件为 application-dev.yml 并填入你自己的值。
+# application-dev.yml 已加入 .gitignore，禁止提交真实凭据（阿里云 AK/SK、微信 appid/secret）。
+spring:
+  datasource:
+    druid:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      url: jdbc:mysql://localhost:3306/exam_system?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true
+      username: root
+      password: ${MYSQL_PASSWORD:root}
+ruikao:
+  alioss:
+    endpoint: ${RUIKAO_ALIOSS_ENDPOINT:oss-cn-beijing.aliyuncs.com}
+    access-key-id: ${RUIKAO_ALIOSS_ACCESS_KEY_ID:your-access-key-id}
+    access-key-secret: ${RUIKAO_ALIOSS_ACCESS_KEY_SECRET:your-access-key-secret}
+    bucket-name: ${RUIKAO_ALIOSS_BUCKET_NAME:your-bucket}
+  wechat:
+    appid: ${RUIKAO_WECHAT_APPID:your-appid}
+    secret: ${RUIKAO_WECHAT_SECRET:your-secret}

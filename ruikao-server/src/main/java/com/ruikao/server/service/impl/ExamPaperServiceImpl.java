@@ -19,8 +19,8 @@ import com.ruikao.server.mapper.ExamPaperMapper;
 import com.ruikao.server.mapper.PaperQuestionMapper;
 import com.ruikao.server.mapper.QuestionBankMapper;
 import com.ruikao.server.service.ExamPaperService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,19 +32,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class ExamPaperServiceImpl implements ExamPaperService {
 
-    @Autowired
-    private ExamPaperMapper examPaperMapper;
+    private final ExamPaperMapper examPaperMapper;
 
-    @Autowired
-    private PaperQuestionMapper paperQuestionMapper;
+    private final PaperQuestionMapper paperQuestionMapper;
 
-    @Autowired
-    private QuestionBankMapper questionBankMapper;
+    private final QuestionBankMapper questionBankMapper;
 
-    @Autowired
-    private ExamMapper examMapper;
+    private final ExamMapper examMapper;
 
     @Override
     public PageResult<ExamPaper> pageQuery(PaperPageQueryDTO dto) {
@@ -106,6 +103,13 @@ public class ExamPaperServiceImpl implements ExamPaperService {
     @Override
     @Transactional
     public void update(PaperDTO dto) {
+        // 被考试引用的试卷不允许改题：update 先删后插，改题会中途更换已发布试卷的题目与分值
+        LambdaQueryWrapper<Exam> examQuery = new LambdaQueryWrapper<>();
+        examQuery.eq(Exam::getPaperId, dto.getId());
+        if (examMapper.selectCount(examQuery) > 0) {
+            throw new BusinessException("该试卷已被考试引用，不允许修改题目");
+        }
+
         ExamPaper paper = new ExamPaper();
         BeanUtils.copyProperties(dto, paper);
         examPaperMapper.updateById(paper);

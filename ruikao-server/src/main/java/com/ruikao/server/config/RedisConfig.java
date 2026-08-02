@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
+import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -24,11 +24,18 @@ import java.time.Duration;
 public class RedisConfig {
 
     private GenericJackson2JsonRedisSerializer jsonSerializer() {
+        // 反序列化类型白名单：仅允许本项目 VO 与 JDK 集合类型。
+        // 若缓存内容被污染（如写入恶意 JSON），Jackson 无法实例化白名单外的类，杜绝 gadget 攻击
+        BasicPolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator.builder()
+                .allowIfSubType("com.ruikao.")
+                .allowIfSubType("java.util.")
+                .allowIfSubType("java.time.")
+                .build();
         ObjectMapper om = new ObjectMapper();
         om.registerModule(new JavaTimeModule());
         om.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
         // 写入类型信息，保证反序列化能还原为原对象类型
-        om.activateDefaultTyping(LaissezFaireSubTypeValidator.instance,
+        om.activateDefaultTyping(ptv,
                 ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
         return new GenericJackson2JsonRedisSerializer(om);
     }

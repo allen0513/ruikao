@@ -1,6 +1,7 @@
 package com.ruikao.server.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.ruikao.common.constant.ExamConstants;
 import com.ruikao.pojo.entity.Exam;
 import com.ruikao.pojo.entity.ExamRecord;
 import com.ruikao.pojo.entity.Student;
@@ -14,8 +15,9 @@ import com.ruikao.server.service.ChartService;
 import org.apache.poi.ss.usermodel.*;
 import org.springframework.cache.annotation.Cacheable;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
+import lombok.RequiredArgsConstructor;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -25,19 +27,21 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class ChartServiceImpl implements ChartService {
 
-    @Autowired
-    private ExamMapper examMapper;
+    private final ExamMapper examMapper;
 
-    @Autowired
-    private StudentMapper studentMapper;
+    private final StudentMapper studentMapper;
 
-    @Autowired
-    private SysUserMapper sysUserMapper;
+    private final SysUserMapper sysUserMapper;
 
-    @Autowired
-    private ExamRecordMapper examRecordMapper;
+    private final ExamRecordMapper examRecordMapper;
+
+    /**
+     * 自身代理引用：Excel 导出时经代理调用 @Cacheable 方法，避免类内自调用绕过缓存
+     */
+    private final ObjectProvider<ChartService> selfProvider;
 
     @Override
     @Cacheable(cacheNames = "chart", key = "'dashboard'")
@@ -48,9 +52,9 @@ public class ChartServiceImpl implements ChartService {
         Long totalExams = examMapper.selectCount(null);
         vo.setTotalExams(totalExams != null ? totalExams : 0L);
 
-        // 进行中的考试（status=1）
+        // 进行中的考试
         LambdaQueryWrapper<Exam> activeExamWrapper = new LambdaQueryWrapper<>();
-        activeExamWrapper.eq(Exam::getStatus, 1);
+        activeExamWrapper.eq(Exam::getStatus, ExamConstants.STATUS_IN_PROGRESS);
         Long activeExams = examMapper.selectCount(activeExamWrapper);
         vo.setActiveExams(activeExams != null ? activeExams : 0L);
 
@@ -58,9 +62,9 @@ public class ChartServiceImpl implements ChartService {
         Long totalStudents = studentMapper.selectCount(null);
         vo.setTotalStudents(totalStudents != null ? totalStudents : 0L);
 
-        // 教师总数
+        // 教师总数（user_type=1 为教师，曾误用 2 导致恒为 0）
         LambdaQueryWrapper<SysUser> teacherWrapper = new LambdaQueryWrapper<>();
-        teacherWrapper.eq(SysUser::getUserType, 2);
+        teacherWrapper.eq(SysUser::getUserType, ExamConstants.USER_TYPE_TEACHER);
         Long totalTeachers = sysUserMapper.selectCount(teacherWrapper);
         vo.setTotalTeachers(totalTeachers != null ? totalTeachers : 0L);
 
@@ -70,21 +74,17 @@ public class ChartServiceImpl implements ChartService {
         Long pendingMark = examRecordMapper.selectCount(pendingWrapper);
         vo.setPendingMark(pendingMark != null ? pendingMark : 0L);
 
-        // 平均分 & 总通过率
-        List<ExamRecord> allRecords = examRecordMapper.selectList(null);
-        long totalRecords = allRecords.size();
+        // 平均分 & 总通过率（SQL 聚合，口径：已出分记录，score 非空）
+        Long totalRecords = examRecordMapper.selectCountWithScore();
+        Long passedRecords = examRecordMapper.selectPassCount();
+        BigDecimal avgScoreValue = examRecordMapper.selectAvgScore();
 
-        long passedRecords = allRecords.stream()
-                .filter(r -> r.getScore() != null && r.getScore().compareTo(BigDecimal.valueOf(60)) >= 0)
-                .count();
-        double passRate = totalRecords > 0 ? (double) passedRecords / totalRecords * 100 : 0.0;
+        long total = totalRecords != null ? totalRecords : 0L;
+        long passed = passedRecords != null ? passedRecords : 0L;
+        double passRate = total > 0 ? (double) passed / total * 100 : 0.0;
         vo.setPassRate(Math.round(passRate * 10.0) / 10.0);
 
-        double avgScore = allRecords.stream()
-                .filter(r -> r.getScore() != null)
-                .mapToDouble(r -> r.getScore().doubleValue())
-                .average()
-                .orElse(0.0);
+        double avgScore = avgScoreValue != null ? avgScoreValue.doubleValue() : 0.0;
         vo.setAvgScore(Math.round(avgScore * 10.0) / 10.0);
 
         // 最近5场考试
@@ -98,31 +98,22 @@ public class ChartServiceImpl implements ChartService {
     @Cacheable(cacheNames = "chart", key = "'examTrend'")
     public Map<String, Object> getExamTrend() {
         Map<String, Object> result = new HashMap<>();
-        List<Exam> exams = examMapper.selectList(null);
-
-        // 按月份分组统计考试数量
-        Map<String, Long> trendMap = exams.stream()
-                .filter(e -> e.getCreateTime() != null)
-                .collect(Collectors.groupingBy(
-                        e -> e.getCreateTime().toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM")),
-                        Collectors.counting()
-                ));
-
-        // 按月份排序
-        List<String> months = trendMap.keySet().stream().sorted().collect(Collectors.toList());
+        // SQL 聚合按月统计，避免全表加载
+        List<Map<String, Object>> rows = examMapper.selectExamTrendByMonth();
 
         // 返回前端期望的格式: [{month, count}]
-        List<Map<String, Object>> list = months.stream().map(m -> {
+        List<Map<String, Object>> list = rows.stream().map(r -> {
             Map<String, Object> item = new HashMap<>();
-            item.put("month", m);
-            item.put("count", trendMap.get(m));
+            item.put("month", r.get("month"));
+            item.put("count", r.get("cnt"));
             return item;
         }).collect(Collectors.toList());
 
         result.put("data", list);
         // 兼容旧格式
+        List<String> months = list.stream().map(m -> String.valueOf(m.get("month"))).collect(Collectors.toList());
         result.put("dates", months);
-        result.put("counts", months.stream().map(trendMap::get).collect(Collectors.toList()));
+        result.put("counts", list.stream().map(m -> m.get("count")).collect(Collectors.toList()));
         return result;
     }
 
@@ -130,32 +121,29 @@ public class ChartServiceImpl implements ChartService {
     @Cacheable(cacheNames = "chart", key = "'passRate'")
     public Map<String, Object> getPassRate() {
         Map<String, Object> result = new HashMap<>();
-        List<ExamRecord> records = examRecordMapper.selectList(null);
+        // SQL 聚合统计（口径与 dashboard 一致：已出分记录）
+        Long total = examRecordMapper.selectCountWithScore();
+        Long pass = examRecordMapper.selectPassCount();
 
-        Map<String, Long> passMap = records.stream()
-                .filter(r -> r.getScore() != null)
-                .collect(Collectors.groupingBy(
-                        r -> r.getScore().compareTo(BigDecimal.valueOf(60)) >= 0 ? "pass" : "fail",
-                        Collectors.counting()
-                ));
+        long totalCount = total != null ? total : 0L;
+        long passCount = pass != null ? pass : 0L;
+        long failCount = totalCount - passCount;
 
-        long pass = passMap.getOrDefault("pass", 0L);
-        long fail = passMap.getOrDefault("fail", 0L);
-        long total = pass + fail;
-
-        result.put("passCount", pass);
-        result.put("failCount", fail);
-        result.put("totalCount", total);
-        result.put("passRate", total > 0 ? Math.round((double) pass / total * 1000) / 10.0 : 0.0);
+        result.put("passCount", passCount);
+        result.put("failCount", failCount);
+        result.put("totalCount", totalCount);
+        result.put("passRate", totalCount > 0 ? Math.round((double) passCount / totalCount * 1000) / 10.0 : 0.0);
         return result;
     }
 
     @Override
     public XSSFWorkbook buildStatisticWorkbook() {
         // 先取数：任何查询异常在此抛出，由全局异常处理器返回 JSON 错误
-        DashboardVO dashboard = getDashboard();
-        Map<String, Object> trend = getExamTrend();
-        Map<String, Object> pass = getPassRate();
+        // 经自身代理调用，走 @Cacheable 缓存（类内直接调用会绕过 Spring 代理）
+        ChartService self = selfProvider.getObject();
+        DashboardVO dashboard = self.getDashboard();
+        Map<String, Object> trend = self.getExamTrend();
+        Map<String, Object> pass = self.getPassRate();
 
         // 再构建 workbook（纯内存构建，成功后才交由 Controller 写出）
         XSSFWorkbook wb = new XSSFWorkbook();
@@ -278,12 +266,15 @@ public class ChartServiceImpl implements ChartService {
 
     private String statusText(Object status) {
         if (status == null) return "未知";
-        switch (String.valueOf(status)) {
-            case "0": return "未开始";
-            case "1": return "进行中";
-            case "2": return "已结束";
-            default: return "未知";
+        if (status instanceof Number) {
+            switch (((Number) status).intValue()) {
+                case ExamConstants.STATUS_NOT_STARTED: return "未开始";
+                case ExamConstants.STATUS_IN_PROGRESS: return "进行中";
+                case ExamConstants.STATUS_FINISHED: return "已结束";
+                default: return "未知";
+            }
         }
+        return "未知";
     }
 
     /**
@@ -310,14 +301,17 @@ public class ChartServiceImpl implements ChartService {
             LambdaQueryWrapper<ExamRecord> recordWrapper = new LambdaQueryWrapper<>();
             recordWrapper.eq(ExamRecord::getExamId, exam.getId());
             List<ExamRecord> records = examRecordMapper.selectList(recordWrapper);
-            int total = records.size();
-            map.put("studentCount", total);
+            map.put("studentCount", records.size());
 
-            if (total > 0) {
-                long pass = records.stream()
-                        .filter(r -> r.getScore() != null && r.getScore().compareTo(BigDecimal.valueOf(60)) >= 0)
+            // 通过率口径与全局一致：分母为已出分记录（score 非空），避免含未出分记录稀释通过率
+            List<ExamRecord> scoredRecords = records.stream()
+                    .filter(r -> r.getScore() != null)
+                    .collect(Collectors.toList());
+            if (!scoredRecords.isEmpty()) {
+                long pass = scoredRecords.stream()
+                        .filter(r -> r.getScore().compareTo(BigDecimal.valueOf(ExamConstants.PASS_LINE)) >= 0)
                         .count();
-                double rate = Math.round((double) pass / total * 1000) / 10.0;
+                double rate = Math.round((double) pass / scoredRecords.size() * 1000) / 10.0;
                 map.put("passRate", rate + "%");
             } else {
                 map.put("passRate", "-");

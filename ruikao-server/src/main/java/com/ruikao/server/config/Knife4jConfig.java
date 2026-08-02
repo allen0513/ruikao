@@ -5,8 +5,13 @@ import io.swagger.v3.oas.models.info.Info;
 import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
+/**
+ * 接口文档配置：生产环境（prod profile）不加载，避免 /doc.html 泄露接口信息
+ */
 @Configuration
+@Profile("!prod")
 public class Knife4jConfig {
 
     @Bean

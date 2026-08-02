@@ -6,7 +6,9 @@ import com.ruikao.pojo.dto.RecordPageQueryDTO;
 import com.ruikao.pojo.dto.ScoreDTO;
 import com.ruikao.pojo.entity.ExamAnswer;
 import com.ruikao.pojo.vo.RecordVO;
+import com.ruikao.server.annotation.OperLog;
 import com.ruikao.server.service.ExamRecordService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -22,7 +24,7 @@ public class RecordController {
     private final ExamRecordService examRecordService;
 
     @PostMapping("/page")
-    public Result<PageResult<RecordVO>> page(@RequestBody RecordPageQueryDTO queryDTO) {
+    public Result<PageResult<RecordVO>> page(@RequestBody @Valid RecordPageQueryDTO queryDTO) {
         log.info("考试记录分页查询: {}", queryDTO);
         PageResult<RecordVO> pageResult = examRecordService.pageQuery(queryDTO);
         return Result.success(pageResult);
@@ -42,13 +44,15 @@ public class RecordController {
         return Result.success(answers);
     }
 
+    @OperLog(module = "成绩管理", type = "评分", description = "评分:{#scoreDTO.recordId} 第{#scoreDTO.questionId}题")
     @PostMapping("/score")
-    public Result<String> score(@RequestBody ScoreDTO scoreDTO) {
+    public Result<String> score(@RequestBody @Valid ScoreDTO scoreDTO) {
         log.info("评分: {}", scoreDTO);
         examRecordService.score(scoreDTO);
         return Result.success();
     }
 
+    @OperLog(module = "成绩管理", type = "完成阅卷", description = "完成阅卷:{#id}")
     @PostMapping("/complete/{id}")
     public Result<String> completeMarking(@PathVariable Long id) {
         log.info("完成阅卷, recordId: {}", id);
@@ -56,6 +60,7 @@ public class RecordController {
         return Result.success();
     }
 
+    @OperLog(module = "成绩管理", type = "删除", description = "删除考试记录:{#id}")
     @DeleteMapping("/{id}")
     public Result<String> delete(@PathVariable Long id) {
         log.info("删除考试记录, id: {}", id);

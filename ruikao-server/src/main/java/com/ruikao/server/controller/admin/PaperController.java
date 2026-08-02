@@ -6,7 +6,9 @@ import com.ruikao.pojo.dto.PaperDTO;
 import com.ruikao.pojo.dto.PaperPageQueryDTO;
 import com.ruikao.pojo.entity.ExamPaper;
 import com.ruikao.pojo.vo.QuestionVO;
+import com.ruikao.server.annotation.OperLog;
 import com.ruikao.server.service.ExamPaperService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -23,26 +25,29 @@ public class PaperController {
     private final ExamPaperService examPaperService;
 
     @PostMapping("/page")
-    public Result<PageResult<ExamPaper>> page(@RequestBody PaperPageQueryDTO queryDTO) {
+    public Result<PageResult<ExamPaper>> page(@RequestBody @Valid PaperPageQueryDTO queryDTO) {
         log.info("试卷分页查询: {}", queryDTO);
         PageResult<ExamPaper> pageResult = examPaperService.pageQuery(queryDTO);
         return Result.success(pageResult);
     }
 
+    @OperLog(module = "试卷管理", type = "新增", description = "创建试卷:{#paperDTO.paperName}")
     @PostMapping
-    public Result<String> create(@RequestBody PaperDTO paperDTO) {
+    public Result<String> create(@RequestBody @Valid PaperDTO paperDTO) {
         log.info("创建试卷: {}", paperDTO.getPaperName());
         examPaperService.add(paperDTO);
         return Result.success();
     }
 
+    @OperLog(module = "试卷管理", type = "修改", description = "更新试卷:{#paperDTO.id}")
     @PutMapping
-    public Result<String> update(@RequestBody PaperDTO paperDTO) {
+    public Result<String> update(@RequestBody @Valid PaperDTO paperDTO) {
         log.info("更新试卷, id: {}", paperDTO.getId());
         examPaperService.update(paperDTO);
         return Result.success();
     }
 
+    @OperLog(module = "试卷管理", type = "删除", description = "删除试卷:{#id}")
     @DeleteMapping("/{id}")
     public Result<String> delete(@PathVariable Long id) {
         log.info("删除试卷, id: {}", id);
@@ -59,6 +64,7 @@ public class PaperController {
         return Result.success(result);
     }
 
+    @OperLog(module = "试卷管理", type = "发布", description = "发布试卷:{#id}")
     @PutMapping("/publish/{id}")
     public Result<String> publish(@PathVariable Long id) {
         log.info("发布试卷, id: {}", id);

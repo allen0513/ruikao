@@ -1,8 +1,10 @@
 package com.ruikao.server.controller.admin;
 
+import com.ruikao.common.constant.ExamConstants;
 import com.ruikao.common.constant.JwtClaimsConstant;
 import com.ruikao.common.context.BaseContext;
 import com.ruikao.common.exception.AccountNotFoundException;
+import com.ruikao.common.exception.BusinessException;
 import com.ruikao.common.exception.PasswordErrorException;
 import com.ruikao.common.properties.JwtProperties;
 import com.ruikao.common.result.Result;
@@ -11,7 +13,11 @@ import com.ruikao.common.utils.PasswordUtil;
 import com.ruikao.pojo.dto.LoginDTO;
 import com.ruikao.pojo.entity.SysUser;
 import com.ruikao.pojo.vo.LoginVO;
+import com.ruikao.server.security.LoginAttemptService;
+import com.ruikao.server.security.TokenBlacklistService;
 import com.ruikao.server.service.SysUserService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -30,22 +36,41 @@ public class AdminAuthController {
     @Autowired
     private JwtProperties jwtProperties;
 
+    @Autowired
+    private LoginAttemptService loginAttemptService;
+
+    @Autowired
+    private TokenBlacklistService tokenBlacklistService;
+
     @PostMapping("/login")
-    public Result<LoginVO> login(@RequestBody LoginDTO loginDTO) {
+    public Result<LoginVO> login(@RequestBody @Valid LoginDTO loginDTO) {
         log.info("管理员登录: {}", loginDTO.getUsername());
+
+        // 限流：连续失败 5 次锁定 15 分钟
+        loginAttemptService.checkNotLocked(loginDTO.getUsername());
 
         SysUser user = sysUserService.findByUsername(loginDTO.getUsername());
         if (user == null) {
+            loginAttemptService.recordFailure(loginDTO.getUsername());
             throw new AccountNotFoundException("账号不存在");
         }
 
         if (!PasswordUtil.matches(loginDTO.getPassword(), user.getPassword())) {
+            loginAttemptService.recordFailure(loginDTO.getUsername());
             throw new PasswordErrorException("密码错误");
         }
+
+        // 禁用账号禁止登录
+        if (user.getStatus() != ExamConstants.USER_STATUS_ENABLED) {
+            throw new BusinessException("账号已被禁用，请联系管理员");
+        }
+
+        loginAttemptService.recordSuccess(loginDTO.getUsername());
 
         Map<String, Object> claims = new HashMap<>();
         claims.put(JwtClaimsConstant.USER_ID, user.getId());
         claims.put(JwtClaimsConstant.USERNAME, user.getUsername());
+        claims.put(JwtClaimsConstant.USER_TYPE, user.getUserType());
 
         String token = JwtUtil.createJWT(
                 jwtProperties.getAdminSecretKey(),
@@ -65,7 +90,13 @@ public class AdminAuthController {
     }
 
     @PostMapping("/logout")
-    public Result<String> logout() {
+    public Result<String> logout(HttpServletRequest request) {
+        // 登出即失效：将当前 token 加入黑名单，剩余有效期内不可再用
+        String token = request.getHeader(jwtProperties.getAdminTokenName());
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+        tokenBlacklistService.blacklist("admin", token, jwtProperties.getAdminTtl());
         BaseContext.remove();
         return Result.success();
     }

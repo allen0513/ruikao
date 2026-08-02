@@ -2,6 +2,8 @@ package com.ruikao.pojo.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -15,6 +17,8 @@ public class Student {
 
     private String studentNo;
 
+    /** 密码只接收不输出（WRITE_ONLY），防止接口泄露 */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     private String name;
@@ -33,6 +37,8 @@ public class Student {
 
     private String avatar;
 
+    /** 微信 openid 为敏感标识，不对前端输出 */
+    @JsonIgnore
     private String openid;
 
     private Integer status;

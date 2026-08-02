@@ -7,7 +7,9 @@ import java.util.List;
 
 public interface ExamAnswerService {
 
-    void save(AnswerSubmitDTO dto);
+    /** 保存答案（studentId 用于归属校验） */
+    void save(AnswerSubmitDTO dto, Long studentId);
 
-    List<ExamAnswer> getByRecordId(Long recordId);
+    /** 查询答卷答案（studentId 用于归属校验） */
+    List<ExamAnswer> getByRecordId(Long recordId, Long studentId);
 }

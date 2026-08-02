@@ -1,9 +1,11 @@
 package com.ruikao.server.controller.student;
 
+import com.ruikao.common.context.BaseContext;
 import com.ruikao.common.result.Result;
 import com.ruikao.pojo.dto.AnswerSubmitDTO;
 import com.ruikao.pojo.entity.ExamAnswer;
 import com.ruikao.server.service.ExamAnswerService;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -19,17 +21,19 @@ public class AnswerController {
     private ExamAnswerService examAnswerService;
 
     @PostMapping("/save")
-    public Result<String> save(@RequestBody AnswerSubmitDTO answerSubmitDTO) {
-        log.info("保存学生答案: recordId={}, questionId={}",
-                answerSubmitDTO.getRecordId(), answerSubmitDTO.getQuestionId());
-        examAnswerService.save(answerSubmitDTO);
+    public Result<String> save(@RequestBody @Valid AnswerSubmitDTO answerSubmitDTO) {
+        Long studentId = BaseContext.getCurrentId();
+        log.info("保存学生答案: recordId={}, questionId={}, studentId={}",
+                answerSubmitDTO.getRecordId(), answerSubmitDTO.getQuestionId(), studentId);
+        examAnswerService.save(answerSubmitDTO, studentId);
         return Result.success();
     }
 
     @GetMapping("/list/{recordId}")
     public Result<List<ExamAnswer>> list(@PathVariable Long recordId) {
-        log.info("查询答题记录: recordId={}", recordId);
-        List<ExamAnswer> answers = examAnswerService.getByRecordId(recordId);
+        Long studentId = BaseContext.getCurrentId();
+        log.info("查询答题记录: recordId={}, studentId={}", recordId, studentId);
+        List<ExamAnswer> answers = examAnswerService.getByRecordId(recordId, studentId);
         return Result.success(answers);
     }
 }

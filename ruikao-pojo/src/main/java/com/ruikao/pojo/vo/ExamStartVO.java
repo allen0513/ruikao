@@ -12,5 +12,6 @@ public class ExamStartVO {
     private String paperName;
     private Integer duration;
     private BigDecimal totalScore;
-    private List<QuestionVO> questions;
+    /** 开考题目（不含正确答案） */
+    private List<StudentQuestionVO> questions;
 }

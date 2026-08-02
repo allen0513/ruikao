@@ -25,14 +25,6 @@
         </encoder>
     </appender>
 
-    <!-- 异步文件输出（生产环境使用，避免日志 IO 阻塞业务线程） -->
-    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
-        <queueSize>1024</queueSize>
-        <discardingThreshold>0</discardingThreshold>
-        <includeCallerData>false</includeCallerData>
-        <appender-ref ref="FILE"/>
-    </appender>
-
     <!-- 开发环境：控制台 INFO（级别由 application.yml 的 logging.level 控制）+ 文件 INFO -->
     <springProfile name="dev">
         <root level="INFO">
@@ -41,8 +33,14 @@
         </root>
     </springProfile>
 
-    <!-- 生产环境：控制台 WARN + 异步文件 INFO -->
+    <!-- 生产环境：控制台 WARN + 异步文件 INFO（仅 prod 下定义，避免 dev 启动时出现未引用警告） -->
     <springProfile name="prod">
+        <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+            <queueSize>1024</queueSize>
+            <discardingThreshold>0</discardingThreshold>
+            <includeCallerData>false</includeCallerData>
+            <appender-ref ref="FILE"/>
+        </appender>
         <root level="WARN">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="ASYNC_FILE"/>

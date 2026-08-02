@@ -1,6 +1,7 @@
 package com.ruikao.server.service;
 
 import com.ruikao.common.result.PageResult;
+import com.ruikao.pojo.dto.UserDTO;
 import com.ruikao.pojo.dto.UserPageQueryDTO;
 import com.ruikao.pojo.entity.SysUser;
 
@@ -8,9 +9,9 @@ public interface SysUserService {
 
     PageResult<SysUser> pageQuery(UserPageQueryDTO dto);
 
-    void add(SysUser user);
+    void add(UserDTO dto);
 
-    void update(SysUser user);
+    void update(UserDTO dto);
 
     void delete(Long id);
 

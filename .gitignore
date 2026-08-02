@@ -2,6 +2,8 @@ HELP.md
 target/
 logs/
 uploads/
+# 本地开发配置含真实凭据（阿里云 AK/SK、微信 appid/secret），禁止入库；模板见 application-dev.yml.example
+ruikao-server/src/main/resources/application-dev.yml
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

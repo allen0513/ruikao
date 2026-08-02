@@ -1,5 +1,6 @@
 package com.ruikao.server.config;
 
+import com.ruikao.server.interceptor.CommonJwtInterceptor;
 import com.ruikao.server.interceptor.JwtTokenAdminInterceptor;
 import com.ruikao.server.interceptor.JwtTokenStudentInterceptor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,10 +18,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
     private JwtTokenAdminInterceptor jwtTokenAdminInterceptor;
     @Autowired
     private JwtTokenStudentInterceptor jwtTokenStudentInterceptor;
+    @Autowired
+    private CommonJwtInterceptor commonJwtInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        log.info("注册 JWT 双拦截器");
+        log.info("注册 JWT 拦截器");
 
         registry.addInterceptor(jwtTokenAdminInterceptor)
                 .addPathPatterns("/api/admin/**")
@@ -33,6 +36,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/api/student/auth/wx-login",
                         "/api/student/auth/bind-wx"
                 );
+
+        // 公共接口（如文件上传）：任一端有效 token 即可
+        registry.addInterceptor(commonJwtInterceptor)
+                .addPathPatterns("/api/common/**");
     }
 
     @Override

@@ -5,15 +5,17 @@ import com.ruikao.common.result.Result;
 import com.ruikao.pojo.dto.ExamAssignDTO;
 import com.ruikao.pojo.dto.ExamDTO;
 import com.ruikao.pojo.dto.ExamPageQueryDTO;
+import com.ruikao.pojo.dto.ExamStatusDTO;
 import com.ruikao.pojo.vo.ExamVO;
 import com.ruikao.pojo.vo.RankVO;
+import com.ruikao.server.annotation.OperLog;
 import com.ruikao.server.service.ExamService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController("adminExamController")
 @RequestMapping("/api/admin/exam")
@@ -24,26 +26,29 @@ public class ExamController {
     private final ExamService examService;
 
     @PostMapping("/page")
-    public Result<PageResult<ExamVO>> page(@RequestBody ExamPageQueryDTO queryDTO) {
+    public Result<PageResult<ExamVO>> page(@RequestBody @Valid ExamPageQueryDTO queryDTO) {
         log.info("考试分页查询: {}", queryDTO);
         PageResult<ExamVO> pageResult = examService.pageQuery(queryDTO);
         return Result.success(pageResult);
     }
 
+    @OperLog(module = "考试管理", type = "新增", description = "创建考试:{#examDTO.examName}")
     @PostMapping
-    public Result<String> create(@RequestBody ExamDTO examDTO) {
+    public Result<String> create(@RequestBody @Valid ExamDTO examDTO) {
         log.info("创建考试: {}", examDTO.getExamName());
         examService.add(examDTO);
         return Result.success();
     }
 
+    @OperLog(module = "考试管理", type = "修改", description = "更新考试:{#examDTO.id}")
     @PutMapping
-    public Result<String> update(@RequestBody ExamDTO examDTO) {
+    public Result<String> update(@RequestBody @Valid ExamDTO examDTO) {
         log.info("更新考试, id: {}", examDTO.getId());
         examService.update(examDTO);
         return Result.success();
     }
 
+    @OperLog(module = "考试管理", type = "删除", description = "删除考试:{#id}")
     @DeleteMapping("/{id}")
     public Result<String> delete(@PathVariable Long id) {
         log.info("删除考试, id: {}", id);
@@ -58,19 +63,20 @@ public class ExamController {
         return Result.success(examVO);
     }
 
+    @OperLog(module = "考试管理", type = "修改", description = "更新考试状态:{#examStatusDTO.status}")
     @PutMapping("/status/{id}")
-    public Result<String> updateStatus(@PathVariable Long id, @RequestBody Map<String, Integer> body) {
-        Integer status = body.get("status");
-        log.info("更新考试状态, id: {}, status: {}", id, status);
-        examService.updateStatus(id, status);
+    public Result<String> updateStatus(@PathVariable Long id, @RequestBody @Valid ExamStatusDTO examStatusDTO) {
+        log.info("更新考试状态, id: {}, status: {}", id, examStatusDTO.getStatus());
+        examService.updateStatus(id, examStatusDTO.getStatus());
         return Result.success();
     }
 
     /**
      * 分配考试给学生
      */
+    @OperLog(module = "考试管理", type = "分配", description = "分配考试:{#assignDTO.examId}")
     @PostMapping("/assign")
-    public Result<String> assignStudents(@RequestBody ExamAssignDTO assignDTO) {
+    public Result<String> assignStudents(@RequestBody @Valid ExamAssignDTO assignDTO) {
         log.info("分配考试, examId={}, studentIds={}", assignDTO.getExamId(), assignDTO.getStudentIds());
         examService.assignStudents(assignDTO.getExamId(), assignDTO.getStudentIds());
         return Result.success();

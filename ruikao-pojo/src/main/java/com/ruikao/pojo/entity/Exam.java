@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.annotation.*;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Data
 @TableName("exam")
@@ -17,11 +19,11 @@ public class Exam {
 
     private String courseName;
 
-    private String examDate;
+    private LocalDate examDate;
 
-    private String startTime;
+    private LocalTime startTime;
 
-    private String endTime;
+    private LocalTime endTime;
 
     private String examRoom;
 

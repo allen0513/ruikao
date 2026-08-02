@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.5</version>
+        <version>3.5.14</version>
         <relativePath/>
     </parent>
 
@@ -30,11 +30,11 @@
         <pagehelper.version>2.1.0</pagehelper.version>
         <druid.version>1.2.23</druid.version>
         <knife4j.version>4.5.0</knife4j.version>
+        <!-- knife4j 4.5.0 自带的 springdoc 2.3.0 与 Spring Boot 3.5 不兼容，需单独升级 -->
+        <springdoc.version>2.8.17</springdoc.version>
         <jjwt.version>0.12.6</jjwt.version>
         <poi.version>5.4.0</poi.version>
         <aliyun-oss.version>3.17.4</aliyun-oss.version>
-        <!-- 编译时保留方法参数名，供 Spring Cache / SpEL 按参数名解析 key -->
-        <maven.compiler.parameters>true</maven.compiler.parameters>
     </properties>
 
     <dependencyManagement>
@@ -43,7 +43,8 @@
                 <groupId>com.ruikao</groupId>
                 <artifactId>ruikao-common</artifactId>
                 <version>${project.version}</version>
-            </dependency>            <dependency>
+            </dependency>
+            <dependency>
                 <groupId>com.ruikao</groupId>
                 <artifactId>ruikao-pojo</artifactId>
                 <version>${project.version}</version>
@@ -59,14 +60,45 @@
                 <version>${mybatis-plus.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.baomidou</groupId>
-                <artifactId>mybatis-plus-jsqlparser</artifactId>
-                <version>${mybatis-plus.version}</version>
+                <groupId>com.github.pagehelper</groupId>
+                <artifactId>pagehelper-spring-boot-starter</artifactId>
+                <version>${pagehelper.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.github.xiaoymin</groupId>
                 <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
                 <version>${knife4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.security</groupId>
+                <artifactId>spring-security-crypto</artifactId>
+                <!-- 跟随 Boot BOM 管理的 Spring Security 版本 -->
+                <version>${spring-security.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.poi</groupId>
+                <artifactId>poi-ooxml</artifactId>
+                <version>${poi.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-api</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
+                <version>${jjwt.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.aliyun.oss</groupId>
@@ -85,18 +117,6 @@
     </dependencies>
 
     <build>
-        <pluginManagement>
-            <plugins>
-                <!-- 编译时保留方法参数名，供 Spring Cache / RedisLock 的 SpEL key 按参数名解析 -->
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <configuration>
-                        <parameters>true</parameters>
-                    </configuration>
-                </plugin>
-            </plugins>
-        </pluginManagement>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
